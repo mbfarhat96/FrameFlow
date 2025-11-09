@@ -1,26 +1,25 @@
 // App.js - FrameFlow with LensFlow Design
-import React, { useState, useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as ImagePicker from 'expo-image-picker';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  TextInput, 
-  ScrollView, 
-  Image, 
-  FlatList,
-  SafeAreaView,
-  StatusBar,
-  Alert,
-  Dimensions
-} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import * as ImagePicker from 'expo-image-picker';
+import { useEffect, useState } from 'react';
+import {
+  Alert,
+  Dimensions,
+  FlatList,
+  Image,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -197,6 +196,8 @@ function GalleryScreen({ navigation }) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [tagTags, setTagTags] = useState([]);
   const [customTagInput, setCustomTagInput] = useState('');
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedPhotos, setSelectedPhotos] = useState([]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -329,19 +330,91 @@ function GalleryScreen({ navigation }) {
     }
   };
 
-  const renderMediaItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.galleryItem}
-      onPress={() => navigation.navigate('MediaDetail', { media: item, showAddButton: false })}
-    >
-      <Image source={{ uri: item.uri }} style={styles.galleryImage} />
-      {item.type === 'video' && (
-        <View style={styles.videoIndicatorGallery}>
-          <Ionicons name="play" size={20} color="white" />
-        </View>
-      )}
-    </TouchableOpacity>
-  );
+  const handlePhotoPress = (item) => {
+    if (selectionMode) {
+      togglePhotoSelection(item.id);
+    } else {
+      navigation.navigate('MediaDetail', { media: item, showAddButton: false });
+    }
+  };
+
+  const handlePhotoLongPress = (item) => {
+    if (!selectionMode) {
+      setSelectionMode(true);
+      setSelectedPhotos([item.id]);
+    }
+  };
+
+  const togglePhotoSelection = (photoId) => {
+    if (selectedPhotos.includes(photoId)) {
+      const newSelection = selectedPhotos.filter(id => id !== photoId);
+      setSelectedPhotos(newSelection);
+      if (newSelection.length === 0) {
+        setSelectionMode(false);
+      }
+    } else {
+      setSelectedPhotos([...selectedPhotos, photoId]);
+    }
+  };
+
+  const cancelSelection = () => {
+    setSelectionMode(false);
+    setSelectedPhotos([]);
+  };
+
+  const deleteSelectedPhotos = async () => {
+    Alert.alert(
+      'Delete Photos',
+      `Are you sure you want to delete ${selectedPhotos.length} photo(s)?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const updatedMedia = media.filter(m => !selectedPhotos.includes(m.id));
+              await AsyncStorage.setItem(STORAGE_KEYS.MEDIA, JSON.stringify(updatedMedia));
+              setMedia(updatedMedia);
+              setSelectionMode(false);
+              setSelectedPhotos([]);
+              Alert.alert('Success', `${selectedPhotos.length} photo(s) deleted.`);
+            } catch (error) {
+              console.error('Error deleting photos:', error);
+              Alert.alert('Error', 'Failed to delete photos.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const renderMediaItem = ({ item }) => {
+    const isSelected = selectedPhotos.includes(item.id);
+    
+    return (
+      <TouchableOpacity 
+        style={styles.galleryItem}
+        onPress={() => handlePhotoPress(item)}
+        onLongPress={() => handlePhotoLongPress(item)}
+        activeOpacity={0.7}
+      >
+        <Image source={{ uri: item.uri }} style={styles.galleryImage} />
+        {item.type === 'video' && (
+          <View style={styles.videoIndicatorGallery}>
+            <Ionicons name="play" size={20} color="white" />
+          </View>
+        )}
+        {selectionMode && (
+          <View style={styles.selectionOverlay}>
+            <View style={[styles.selectionCheckbox, isSelected && styles.selectionCheckboxActive]}>
+              {isSelected && <Ionicons name="checkmark" size={18} color="white" />}
+            </View>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -426,14 +499,30 @@ function GalleryScreen({ navigation }) {
         </View>
       )}
 
+      {/* Delete Bar - Shows when photos are selected */}
+      {selectionMode && (
+        <View style={styles.deleteBar}>
+          <TouchableOpacity onPress={cancelSelection}>
+            <Text style={styles.deleteBarText}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={styles.deleteBarText}>{selectedPhotos.length} selected</Text>
+          <TouchableOpacity onPress={deleteSelectedPhotos} style={styles.deleteBarButton}>
+            <Ionicons name="trash-outline" size={20} color="white" />
+            <Text style={styles.deleteBarButtonText}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Upload Button */}
-      <TouchableOpacity 
-        style={styles.uploadButton}
-        onPress={() => setShowUploadOptions(!showUploadOptions)}
-      >
-        <Ionicons name="cloud-upload-outline" size={20} color="white" />
-        <Text style={styles.uploadButtonText}>Upload Photo</Text>
-      </TouchableOpacity>
+      {!selectionMode && (
+        <TouchableOpacity 
+          style={styles.uploadButton}
+          onPress={() => setShowUploadOptions(!showUploadOptions)}
+        >
+          <Ionicons name="cloud-upload-outline" size={20} color="white" />
+          <Text style={styles.uploadButtonText}>Upload Photo</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Upload Options Modal */}
       {showUploadOptions && (
@@ -473,79 +562,79 @@ function GalleryScreen({ navigation }) {
               </Text>
             </View>
 
-            {/* Photo Preview */}
-            <View style={styles.tagPhotoPreview}>
-              <Image 
-                source={{ uri: photosToTag[currentPhotoIndex].uri }} 
-                style={styles.tagPhotoImage}
-                resizeMode="cover"
-              />
-            </View>
-
-            {/* Tags Selection */}
-            <View style={styles.tagPhotoSection}>
-              <Text style={styles.tagPhotoLabel}>Add Tags</Text>
-              
-              {/* Custom Tag Input */}
-              <View style={styles.tagPhotoCustomInput}>
-                <TextInput
-                  style={styles.tagPhotoInput}
-                  placeholder="Type a custom tag..."
-                  placeholderTextColor="#9CA3AF"
-                  value={customTagInput}
-                  onChangeText={setCustomTagInput}
-                  onSubmitEditing={addCustomTag}
-                  returnKeyType="done"
+            {/* Scrollable Content */}
+            <ScrollView style={styles.tagPhotoContent} showsVerticalScrollIndicator={false}>
+              {/* Photo Preview */}
+              <View style={styles.tagPhotoPreview}>
+                <Image 
+                  source={{ uri: photosToTag[currentPhotoIndex].uri }} 
+                  style={styles.tagPhotoImage}
+                  resizeMode="cover"
                 />
-                {customTagInput.trim() && (
-                  <TouchableOpacity onPress={addCustomTag} style={styles.tagPhotoAddButton}>
-                    <Ionicons name="add" size={20} color="#7D8F69" />
-                  </TouchableOpacity>
-                )}
               </View>
 
-              {/* Selected Tags */}
-              {tagTags.length > 0 && (
-                <View style={styles.tagPhotoSelectedTags}>
-                  {tagTags.map((tag) => (
-                    <View key={tag} style={styles.tagPhotoSelectedTag}>
-                      <Text style={styles.tagPhotoSelectedTagText}>{tag}</Text>
-                      <TouchableOpacity onPress={() => toggleTag(tag)}>
-                        <Ionicons name="close" size={16} color="white" />
-                      </TouchableOpacity>
-                    </View>
+              {/* Tags Selection */}
+              <View style={styles.tagPhotoSection}>
+                <Text style={styles.tagPhotoLabel}>Add Tags</Text>
+                
+                {/* Custom Tag Input */}
+                <View style={styles.tagPhotoCustomInput}>
+                  <TextInput
+                    style={styles.tagPhotoInput}
+                    placeholder="Type a custom tag..."
+                    placeholderTextColor="#9CA3AF"
+                    value={customTagInput}
+                    onChangeText={setCustomTagInput}
+                    onSubmitEditing={addCustomTag}
+                    returnKeyType="done"
+                  />
+                  {customTagInput.trim() && (
+                    <TouchableOpacity onPress={addCustomTag} style={styles.tagPhotoAddButton}>
+                      <Ionicons name="add" size={20} color="#7D8F69" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Selected Tags */}
+                {tagTags.length > 0 && (
+                  <View style={styles.tagPhotoSelectedTags}>
+                    {tagTags.map((tag) => (
+                      <View key={tag} style={styles.tagPhotoSelectedTag}>
+                        <Text style={styles.tagPhotoSelectedTagText}>{tag}</Text>
+                        <TouchableOpacity onPress={() => toggleTag(tag)}>
+                          <Ionicons name="close" size={16} color="white" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Preset Tags */}
+                <Text style={styles.tagPhotoQuickAddLabel}>Quick add:</Text>
+                <View style={styles.tagPhotoTagsGrid}>
+                  {PRESET_TAGS.map((tag) => (
+                    <TouchableOpacity
+                      key={tag}
+                      style={[
+                        styles.tagPhotoTag,
+                        tagTags.includes(tag) && styles.tagPhotoTagDisabled
+                      ]}
+                      onPress={() => toggleTag(tag)}
+                      disabled={tagTags.includes(tag)}
+                    >
+                      <Text style={[
+                        styles.tagPhotoTagText,
+                        tagTags.includes(tag) && styles.tagPhotoTagTextDisabled
+                      ]}>
+                        {tag}
+                      </Text>
+                    </TouchableOpacity>
                   ))}
                 </View>
-              )}
+              </View>
+            </ScrollView>
 
-              {/* Preset Tags */}
-              <Text style={styles.tagPhotoQuickAddLabel}>Quick add:</Text>
-              <ScrollView 
-                style={styles.tagPhotoTagsScroll}
-                contentContainerStyle={styles.tagPhotoTagsGrid}
-              >
-                {PRESET_TAGS.map((tag) => (
-                  <TouchableOpacity
-                    key={tag}
-                    style={[
-                      styles.tagPhotoTag,
-                      tagTags.includes(tag) && styles.tagPhotoTagDisabled
-                    ]}
-                    onPress={() => toggleTag(tag)}
-                    disabled={tagTags.includes(tag)}
-                  >
-                    <Text style={[
-                      styles.tagPhotoTagText,
-                      tagTags.includes(tag) && styles.tagPhotoTagTextDisabled
-                    ]}>
-                      {tag}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-
-            {/* Action Buttons */}
+            {/* Action Buttons - Fixed at bottom */}
             <View style={styles.tagPhotoActions}>
               <TouchableOpacity style={styles.tagPhotoSkipButton} onPress={skipPhoto}>
                 <Text style={styles.tagPhotoSkipText}>Skip</Text>
@@ -1887,6 +1976,7 @@ const styles = StyleSheet.create({
   // Categories
   categoriesScroll: {
     marginBottom: 16,
+    flexGrow: 0,
   },
   categoriesContent: {
     paddingHorizontal: 20,
@@ -1957,6 +2047,27 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  selectionOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(125, 143, 105, 0.2)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    padding: 8,
+  },
+  selectionCheckbox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: 'white',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectionCheckboxActive: {
+    backgroundColor: '#7D8F69',
+    borderColor: '#7D8F69',
   },
   // Empty State
   emptyState: {
@@ -2410,6 +2521,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     width: '100%',
     maxHeight: '85%',
+    overflow: 'hidden',
   },
   tagPhotoHeader: {
     flexDirection: 'row',
@@ -2429,9 +2541,12 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontWeight: '500',
   },
+  tagPhotoContent: {
+    maxHeight: 400,
+  },
   tagPhotoPreview: {
     width: '100%',
-    aspectRatio: 1,
+    height: 250,
     backgroundColor: '#E8DFD3',
   },
   tagPhotoImage: {
@@ -2492,13 +2607,11 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: 8,
   },
-  tagPhotoTagsScroll: {
-    maxHeight: 150,
-  },
   tagPhotoTagsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+    paddingBottom: 20,
   },
   tagPhotoTag: {
     paddingHorizontal: 16,
