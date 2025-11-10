@@ -1,25 +1,27 @@
 // App.js - FrameFlow with LensFlow Design
-import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
-import { useEffect, useState } from 'react';
-import {
-  Alert,
-  Dimensions,
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  TextInput, 
+  ScrollView, 
+  Image, 
   FlatList,
-  Image,
   SafeAreaView,
-  ScrollView,
   StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+  Alert,
+  Dimensions
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { ErrorBoundary } from './components/error-boundary';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -33,10 +35,12 @@ const STORAGE_KEYS = {
   COLLECTIONS: '@frameflow_collections',
 };
 
-const CATEGORIES = ['All', 'Portrait', 'Landscape', 'Street', 'Archit'];
-
 const PRESET_TAGS = [
   'Bride', 'Groom', 'Couple', 'Family', 'Kids', 'Wedding', 'Portrait', 'Male', 'Female'
+];
+
+const GALLERY_FILTER_TAGS = [
+  'All', 'Portrait', 'Wedding', 'Couple', 'Bride', 'Groom', 'Family', 'Kids', 'Male', 'Female'
 ];
 
 // ============================================
@@ -64,11 +68,11 @@ function HomeScreen({ navigation }) {
           saved: Math.floor(media.length * 0.6)
         });
 
-        // Group by category for collections
+        // Group by first tag for collections
         const grouped = media.reduce((acc, item) => {
-          const cat = item.category || 'Other';
-          if (!acc[cat]) acc[cat] = [];
-          acc[cat].push(item);
+          const tag = item.tags?.[0] || 'Other';
+          if (!acc[tag]) acc[tag] = [];
+          acc[tag].push(item);
           return acc;
         }, {});
 
@@ -76,7 +80,7 @@ function HomeScreen({ navigation }) {
           name,
           count: items.length,
           coverImage: items[0]?.uri,
-          mediaItem: items[0] // Store the full media item
+          mediaItem: items[0]
         }));
         setCollections(cols);
       }
@@ -188,16 +192,15 @@ function HomeScreen({ navigation }) {
 function GalleryScreen({ navigation }) {
   const [media, setMedia] = useState([]);
   const [filteredMedia, setFilteredMedia] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTag, setSelectedTag] = useState('All');
+  const [availableTags, setAvailableTags] = useState(['All']);
   const [showUploadOptions, setShowUploadOptions] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
   const [photosToTag, setPhotosToTag] = useState([]);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [tagTags, setTagTags] = useState([]);
   const [customTagInput, setCustomTagInput] = useState('');
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedPhotos, setSelectedPhotos] = useState([]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -208,13 +211,21 @@ function GalleryScreen({ navigation }) {
 
   useEffect(() => {
     filterMedia();
-  }, [media, selectedCategory, searchQuery]);
+  }, [media, searchQuery, selectedTag]);
 
   const loadMedia = async () => {
     try {
       const mediaData = await AsyncStorage.getItem(STORAGE_KEYS.MEDIA);
       if (mediaData) {
-        setMedia(JSON.parse(mediaData));
+        const loadedMedia = JSON.parse(mediaData);
+        setMedia(loadedMedia);
+        
+        // Extract all unique tags
+        const tags = new Set(['All']);
+        loadedMedia.forEach(item => {
+          item.tags?.forEach(tag => tags.add(tag));
+        });
+        setAvailableTags(Array.from(tags));
       }
     } catch (error) {
       console.error('Error loading media:', error);
@@ -224,16 +235,15 @@ function GalleryScreen({ navigation }) {
   const filterMedia = () => {
     let filtered = [...media];
 
-    if (selectedCategory !== 'All') {
-      filtered = filtered.filter(m => 
-        m.category?.toLowerCase().includes(selectedCategory.toLowerCase())
-      );
+    // Filter by selected tag
+    if (selectedTag !== 'All') {
+      filtered = filtered.filter(m => m.tags?.includes(selectedTag));
     }
 
+    // Filter by search query
     if (searchQuery) {
       filtered = filtered.filter(m =>
-        m.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        m.category?.toLowerCase().includes(searchQuery.toLowerCase())
+        m.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
 
@@ -290,7 +300,6 @@ function GalleryScreen({ navigation }) {
         id: Date.now().toString() + Math.random().toString(),
         uri: currentPhoto.uri,
         type: currentPhoto.type || 'image',
-        category: 'Uncategorized',
         tags: tagTags,
         createdAt: new Date().toISOString(),
       };
@@ -330,91 +339,19 @@ function GalleryScreen({ navigation }) {
     }
   };
 
-  const handlePhotoPress = (item) => {
-    if (selectionMode) {
-      togglePhotoSelection(item.id);
-    } else {
-      navigation.navigate('MediaDetail', { media: item, showAddButton: false });
-    }
-  };
-
-  const handlePhotoLongPress = (item) => {
-    if (!selectionMode) {
-      setSelectionMode(true);
-      setSelectedPhotos([item.id]);
-    }
-  };
-
-  const togglePhotoSelection = (photoId) => {
-    if (selectedPhotos.includes(photoId)) {
-      const newSelection = selectedPhotos.filter(id => id !== photoId);
-      setSelectedPhotos(newSelection);
-      if (newSelection.length === 0) {
-        setSelectionMode(false);
-      }
-    } else {
-      setSelectedPhotos([...selectedPhotos, photoId]);
-    }
-  };
-
-  const cancelSelection = () => {
-    setSelectionMode(false);
-    setSelectedPhotos([]);
-  };
-
-  const deleteSelectedPhotos = async () => {
-    Alert.alert(
-      'Delete Photos',
-      `Are you sure you want to delete ${selectedPhotos.length} photo(s)?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const updatedMedia = media.filter(m => !selectedPhotos.includes(m.id));
-              await AsyncStorage.setItem(STORAGE_KEYS.MEDIA, JSON.stringify(updatedMedia));
-              setMedia(updatedMedia);
-              setSelectionMode(false);
-              setSelectedPhotos([]);
-              Alert.alert('Success', `${selectedPhotos.length} photo(s) deleted.`);
-            } catch (error) {
-              console.error('Error deleting photos:', error);
-              Alert.alert('Error', 'Failed to delete photos.');
-            }
-          }
-        }
-      ]
-    );
-  };
-
-  const renderMediaItem = ({ item }) => {
-    const isSelected = selectedPhotos.includes(item.id);
-    
-    return (
-      <TouchableOpacity 
-        style={styles.galleryItem}
-        onPress={() => handlePhotoPress(item)}
-        onLongPress={() => handlePhotoLongPress(item)}
-        activeOpacity={0.7}
-      >
-        <Image source={{ uri: item.uri }} style={styles.galleryImage} />
-        {item.type === 'video' && (
-          <View style={styles.videoIndicatorGallery}>
-            <Ionicons name="play" size={20} color="white" />
-          </View>
-        )}
-        {selectionMode && (
-          <View style={styles.selectionOverlay}>
-            <View style={[styles.selectionCheckbox, isSelected && styles.selectionCheckboxActive]}>
-              {isSelected && <Ionicons name="checkmark" size={18} color="white" />}
-            </View>
-          </View>
-        )}
-      </TouchableOpacity>
-    );
-  };
+  const renderMediaItem = ({ item }) => (
+    <TouchableOpacity 
+      style={styles.galleryItem}
+      onPress={() => navigation.navigate('MediaDetail', { media: item, showAddButton: false })}
+    >
+      <Image source={{ uri: item.uri }} style={styles.galleryImage} />
+      {item.type === 'video' && (
+        <View style={styles.videoIndicatorGallery}>
+          <Ionicons name="play" size={20} color="white" />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -445,27 +382,27 @@ function GalleryScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Category Pills */}
+      {/* Tag Filter Pills */}
       <ScrollView 
         horizontal 
         showsHorizontalScrollIndicator={false}
         style={styles.categoriesScroll}
         contentContainerStyle={styles.categoriesContent}
       >
-        {CATEGORIES.map((cat) => (
+        {GALLERY_FILTER_TAGS.map((tag) => (
           <TouchableOpacity
-            key={cat}
+            key={tag}
             style={[
               styles.categoryPill,
-              selectedCategory === cat && styles.categoryPillActive
+              selectedTag === tag && styles.categoryPillActive
             ]}
-            onPress={() => setSelectedCategory(cat)}
+            onPress={() => setSelectedTag(tag)}
           >
             <Text style={[
               styles.categoryPillText,
-              selectedCategory === cat && styles.categoryPillTextActive
+              selectedTag === tag && styles.categoryPillTextActive
             ]}>
-              {cat}
+              {tag}
             </Text>
           </TouchableOpacity>
         ))}
@@ -499,30 +436,14 @@ function GalleryScreen({ navigation }) {
         </View>
       )}
 
-      {/* Delete Bar - Shows when photos are selected */}
-      {selectionMode && (
-        <View style={styles.deleteBar}>
-          <TouchableOpacity onPress={cancelSelection}>
-            <Text style={styles.deleteBarText}>Cancel</Text>
-          </TouchableOpacity>
-          <Text style={styles.deleteBarText}>{selectedPhotos.length} selected</Text>
-          <TouchableOpacity onPress={deleteSelectedPhotos} style={styles.deleteBarButton}>
-            <Ionicons name="trash-outline" size={20} color="white" />
-            <Text style={styles.deleteBarButtonText}>Delete</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       {/* Upload Button */}
-      {!selectionMode && (
-        <TouchableOpacity 
-          style={styles.uploadButton}
-          onPress={() => setShowUploadOptions(!showUploadOptions)}
-        >
-          <Ionicons name="cloud-upload-outline" size={20} color="white" />
-          <Text style={styles.uploadButtonText}>Upload Photo</Text>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity 
+        style={styles.uploadButton}
+        onPress={() => setShowUploadOptions(!showUploadOptions)}
+      >
+        <Ionicons name="cloud-upload-outline" size={20} color="white" />
+        <Text style={styles.uploadButtonText}>Upload Photo</Text>
+      </TouchableOpacity>
 
       {/* Upload Options Modal */}
       {showUploadOptions && (
@@ -562,79 +483,79 @@ function GalleryScreen({ navigation }) {
               </Text>
             </View>
 
-            {/* Scrollable Content */}
-            <ScrollView style={styles.tagPhotoContent} showsVerticalScrollIndicator={false}>
-              {/* Photo Preview */}
-              <View style={styles.tagPhotoPreview}>
-                <Image 
-                  source={{ uri: photosToTag[currentPhotoIndex].uri }} 
-                  style={styles.tagPhotoImage}
-                  resizeMode="cover"
+            {/* Photo Preview */}
+            <View style={styles.tagPhotoPreview}>
+              <Image 
+                source={{ uri: photosToTag[currentPhotoIndex].uri }} 
+                style={styles.tagPhotoImage}
+                resizeMode="cover"
+              />
+            </View>
+
+            {/* Tags Selection */}
+            <View style={styles.tagPhotoSection}>
+              <Text style={styles.tagPhotoLabel}>Add Tags</Text>
+              
+              {/* Custom Tag Input */}
+              <View style={styles.tagPhotoCustomInput}>
+                <TextInput
+                  style={styles.tagPhotoInput}
+                  placeholder="Type a custom tag..."
+                  placeholderTextColor="#9CA3AF"
+                  value={customTagInput}
+                  onChangeText={setCustomTagInput}
+                  onSubmitEditing={addCustomTag}
+                  returnKeyType="done"
                 />
+                {customTagInput.trim() && (
+                  <TouchableOpacity onPress={addCustomTag} style={styles.tagPhotoAddButton}>
+                    <Ionicons name="add" size={20} color="#7D8F69" />
+                  </TouchableOpacity>
+                )}
               </View>
 
-              {/* Tags Selection */}
-              <View style={styles.tagPhotoSection}>
-                <Text style={styles.tagPhotoLabel}>Add Tags</Text>
-                
-                {/* Custom Tag Input */}
-                <View style={styles.tagPhotoCustomInput}>
-                  <TextInput
-                    style={styles.tagPhotoInput}
-                    placeholder="Type a custom tag..."
-                    placeholderTextColor="#9CA3AF"
-                    value={customTagInput}
-                    onChangeText={setCustomTagInput}
-                    onSubmitEditing={addCustomTag}
-                    returnKeyType="done"
-                  />
-                  {customTagInput.trim() && (
-                    <TouchableOpacity onPress={addCustomTag} style={styles.tagPhotoAddButton}>
-                      <Ionicons name="add" size={20} color="#7D8F69" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {/* Selected Tags */}
-                {tagTags.length > 0 && (
-                  <View style={styles.tagPhotoSelectedTags}>
-                    {tagTags.map((tag) => (
-                      <View key={tag} style={styles.tagPhotoSelectedTag}>
-                        <Text style={styles.tagPhotoSelectedTagText}>{tag}</Text>
-                        <TouchableOpacity onPress={() => toggleTag(tag)}>
-                          <Ionicons name="close" size={16} color="white" />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                {/* Preset Tags */}
-                <Text style={styles.tagPhotoQuickAddLabel}>Quick add:</Text>
-                <View style={styles.tagPhotoTagsGrid}>
-                  {PRESET_TAGS.map((tag) => (
-                    <TouchableOpacity
-                      key={tag}
-                      style={[
-                        styles.tagPhotoTag,
-                        tagTags.includes(tag) && styles.tagPhotoTagDisabled
-                      ]}
-                      onPress={() => toggleTag(tag)}
-                      disabled={tagTags.includes(tag)}
-                    >
-                      <Text style={[
-                        styles.tagPhotoTagText,
-                        tagTags.includes(tag) && styles.tagPhotoTagTextDisabled
-                      ]}>
-                        {tag}
-                      </Text>
-                    </TouchableOpacity>
+              {/* Selected Tags */}
+              {tagTags.length > 0 && (
+                <View style={styles.tagPhotoSelectedTags}>
+                  {tagTags.map((tag) => (
+                    <View key={tag} style={styles.tagPhotoSelectedTag}>
+                      <Text style={styles.tagPhotoSelectedTagText}>{tag}</Text>
+                      <TouchableOpacity onPress={() => toggleTag(tag)}>
+                        <Ionicons name="close" size={16} color="white" />
+                      </TouchableOpacity>
+                    </View>
                   ))}
                 </View>
-              </View>
-            </ScrollView>
+              )}
 
-            {/* Action Buttons - Fixed at bottom */}
+              {/* Preset Tags */}
+              <Text style={styles.tagPhotoQuickAddLabel}>Quick add:</Text>
+              <ScrollView 
+                style={styles.tagPhotoTagsScroll}
+                contentContainerStyle={styles.tagPhotoTagsGrid}
+              >
+                {PRESET_TAGS.map((tag) => (
+                  <TouchableOpacity
+                    key={tag}
+                    style={[
+                      styles.tagPhotoTag,
+                      tagTags.includes(tag) && styles.tagPhotoTagDisabled
+                    ]}
+                    onPress={() => toggleTag(tag)}
+                    disabled={tagTags.includes(tag)}
+                  >
+                    <Text style={[
+                      styles.tagPhotoTagText,
+                      tagTags.includes(tag) && styles.tagPhotoTagTextDisabled
+                    ]}>
+                      {tag}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Action Buttons */}
             <View style={styles.tagPhotoActions}>
               <TouchableOpacity style={styles.tagPhotoSkipButton} onPress={skipPhoto}>
                 <Text style={styles.tagPhotoSkipText}>Skip</Text>
@@ -829,9 +750,7 @@ function SelectMediaScreen({ navigation }) {
 
 function TagMediaScreen({ navigation, route }) {
   const { media, mediaType } = route.params;
-  const [category, setCategory] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
-  const [showCategories, setShowCategories] = useState(false);
 
   const toggleTag = (tag) => {
     if (selectedTags.includes(tag)) {
@@ -842,8 +761,8 @@ function TagMediaScreen({ navigation, route }) {
   };
 
   const importMedia = async () => {
-    if (!category) {
-      Alert.alert('Category Required', 'Please select a category.');
+    if (selectedTags.length === 0) {
+      Alert.alert('Tags Required', 'Please select at least one tag.');
       return;
     }
 
@@ -855,7 +774,6 @@ function TagMediaScreen({ navigation, route }) {
         id: Date.now().toString() + Math.random().toString(),
         uri: item.uri,
         type: mediaType,
-        category: category,
         tags: selectedTags,
         createdAt: new Date().toISOString(),
       }));
@@ -872,8 +790,6 @@ function TagMediaScreen({ navigation, route }) {
     }
   };
 
-  const FULL_CATEGORIES = ['Wedding', 'Portrait', 'Landscape', 'Street', 'Architecture', 'Product', 'Event'];
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -885,36 +801,6 @@ function TagMediaScreen({ navigation, route }) {
       </View>
 
       <ScrollView style={styles.scrollView}>
-        <View style={styles.tagSection}>
-          <Text style={styles.tagSectionLabel}>Category</Text>
-          <TouchableOpacity
-            style={styles.categorySelect}
-            onPress={() => setShowCategories(!showCategories)}
-          >
-            <Text style={category ? styles.categorySelectTextFilled : styles.categorySelectText}>
-              {category || 'Select category'}
-            </Text>
-            <Ionicons name="chevron-down" size={20} color="#6B7280" />
-          </TouchableOpacity>
-
-          {showCategories && (
-            <View style={styles.categoryDropdown}>
-              {FULL_CATEGORIES.map((cat) => (
-                <TouchableOpacity
-                  key={cat}
-                  style={styles.categoryOption}
-                  onPress={() => {
-                    setCategory(cat);
-                    setShowCategories(false);
-                  }}
-                >
-                  <Text style={styles.categoryOptionText}>{cat}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
-
         <View style={styles.tagSection}>
           <Text style={styles.tagSectionLabel}>Tags</Text>
           <View style={styles.tagsGrid}>
@@ -941,9 +827,9 @@ function TagMediaScreen({ navigation, route }) {
 
       <View style={styles.importActions}>
         <TouchableOpacity
-          style={[styles.importButton, !category && styles.importButtonDisabled]}
+          style={[styles.importButton, selectedTags.length === 0 && styles.importButtonDisabled]}
           onPress={importMedia}
-          disabled={!category}
+          disabled={selectedTags.length === 0}
         >
           <Text style={styles.importButtonText}>Import {media.length} Photos</Text>
         </TouchableOpacity>
@@ -1798,19 +1684,21 @@ function MainTabs() {
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Main" component={MainTabs} />
-        <Stack.Screen 
-          name="MediaDetailModal" 
-          component={MediaDetailScreen}
-          options={{
-            presentation: 'fullScreenModal',
-            animation: 'fade',
-          }}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <ErrorBoundary>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Main" component={MainTabs} />
+          <Stack.Screen 
+            name="MediaDetailModal" 
+            component={MediaDetailScreen}
+            options={{
+              presentation: 'fullScreenModal',
+              animation: 'fade',
+            }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </ErrorBoundary>
   );
 }
 
@@ -1981,6 +1869,7 @@ const styles = StyleSheet.create({
   categoriesContent: {
     paddingHorizontal: 20,
     gap: 8,
+    alignItems: 'center',
   },
   categoryPill: {
     paddingHorizontal: 20,
@@ -1988,6 +1877,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#F9F5F0',
     marginRight: 8,
+    alignSelf: 'flex-start',
   },
   categoryPillActive: {
     backgroundColor: '#7D8F69',
@@ -2047,27 +1937,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  selectionOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(125, 143, 105, 0.2)',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-end',
-    padding: 8,
-  },
-  selectionCheckbox: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: 'white',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  selectionCheckboxActive: {
-    backgroundColor: '#7D8F69',
-    borderColor: '#7D8F69',
   },
   // Empty State
   emptyState: {
@@ -2521,7 +2390,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     width: '100%',
     maxHeight: '85%',
-    overflow: 'hidden',
   },
   tagPhotoHeader: {
     flexDirection: 'row',
@@ -2541,12 +2409,9 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontWeight: '500',
   },
-  tagPhotoContent: {
-    maxHeight: 400,
-  },
   tagPhotoPreview: {
     width: '100%',
-    height: 250,
+    aspectRatio: 1,
     backgroundColor: '#E8DFD3',
   },
   tagPhotoImage: {
@@ -2607,11 +2472,13 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: 8,
   },
+  tagPhotoTagsScroll: {
+    maxHeight: 150,
+  },
   tagPhotoTagsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    paddingBottom: 20,
   },
   tagPhotoTag: {
     paddingHorizontal: 16,
