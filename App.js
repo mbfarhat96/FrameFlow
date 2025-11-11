@@ -48,46 +48,78 @@ const GALLERY_FILTER_TAGS = [
 // ============================================
 
 function HomeScreen({ navigation }) {
-  const [stats, setStats] = useState({ photos: 0, likes: 0, saved: 0 });
+  const [stats, setStats] = useState({ photos: 0, tags: 0, collections: 0 });
   const [collections, setCollections] = useState([]);
   const [allMedia, setAllMedia] = useState([]);
 
   useEffect(() => {
     loadStats();
-  }, []);
+    
+    // Add listener to reload stats when screen comes into focus
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadStats();
+    });
+    
+    return unsubscribe;
+  }, [navigation]);
 
-  const loadStats = async () => {
-    try {
-      const mediaData = await AsyncStorage.getItem(STORAGE_KEYS.MEDIA);
-      if (mediaData) {
-        const media = JSON.parse(mediaData);
-        setAllMedia(media);
-        setStats({
-          photos: media.length,
-          likes: Math.floor(media.length * 2.5),
-          saved: Math.floor(media.length * 0.6)
-        });
+ const loadStats = async () => {
+  try {
+    // Load media data
+    const mediaData = await AsyncStorage.getItem(STORAGE_KEYS.MEDIA);
+    const collectionsData = await AsyncStorage.getItem(STORAGE_KEYS.COLLECTIONS);
+    
+    let photosCount = 0;
+    let tagsCount = 0;
+    let collectionsCount = 0;
+    
+    // Count photos and tags
+    if (mediaData) {
+      const media = JSON.parse(mediaData);
+      setAllMedia(media);
+      photosCount = media.length;
+      
+      // Count unique tags
+      const uniqueTags = new Set();
+      media.forEach(item => {
+        item.tags?.forEach(tag => uniqueTags.add(tag));
+      });
+      tagsCount = uniqueTags.size;
+      
+      // Group by first tag for collections preview
+      const grouped = media.reduce((acc, item) => {
+        const tag = item.tags?.[0] || 'Other';
+        if (!acc[tag]) acc[tag] = [];
+        acc[tag].push(item);
+        return acc;
+      }, {});
 
-        // Group by first tag for collections
-        const grouped = media.reduce((acc, item) => {
-          const tag = item.tags?.[0] || 'Other';
-          if (!acc[tag]) acc[tag] = [];
-          acc[tag].push(item);
-          return acc;
-        }, {});
-
-        const cols = Object.entries(grouped).map(([name, items]) => ({
-          name,
-          count: items.length,
-          coverImage: items[0]?.uri,
-          mediaItem: items[0]
-        }));
-        setCollections(cols);
-      }
-    } catch (error) {
-      console.error('Error loading stats:', error);
+      const cols = Object.entries(grouped).map(([name, items]) => ({
+        name,
+        count: items.length,
+        coverImage: items[0]?.uri,
+        mediaItem: items[0]
+      }));
+      setCollections(cols);
     }
-  };
+    
+    // Count collections
+    if (collectionsData) {
+      const collections = JSON.parse(collectionsData);
+      collectionsCount = collections.length;
+    }
+    
+    // Update stats
+    setStats({
+      photos: photosCount,
+      tags: tagsCount,
+      collections: collectionsCount
+    });
+    
+  } catch (error) {
+    console.error('Error loading stats:', error);
+  }
+};
 
   const loadMediaForDetail = (uri) => {
     const mediaItem = allMedia.find(m => m.uri === uri);
@@ -111,22 +143,22 @@ function HomeScreen({ navigation }) {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Ionicons name="camera-outline" size={24} color="#6B7280" />
-            <Text style={styles.statNumber}>{stats.photos.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>Photos</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="heart-outline" size={24} color="#6B7280" />
-            <Text style={styles.statNumber}>{stats.likes.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>Likes</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="bookmark-outline" size={24} color="#6B7280" />
-            <Text style={styles.statNumber}>{stats.saved}</Text>
-            <Text style={styles.statLabel}>Saved</Text>
-          </View>
-        </View>
+      <View style={styles.statCard}>
+        <Ionicons name="image-outline" size={24} color="#6B7280" />
+        <Text style={styles.statNumber}>{stats.photos.toLocaleString()}</Text>
+        <Text style={styles.statLabel}>Photos</Text>
+      </View>
+      <View style={styles.statCard}>
+        <Ionicons name="pricetag-outline" size={24} color="#6B7280" />
+        <Text style={styles.statNumber}>{stats.tags.toLocaleString()}</Text>
+        <Text style={styles.statLabel}>Tags</Text>
+      </View>
+      <View style={styles.statCard}>
+        <Ionicons name="folder-outline" size={24} color="#6B7280" />
+        <Text style={styles.statNumber}>{stats.collections}</Text>
+        <Text style={styles.statLabel}>Collections</Text>
+      </View>
+</View>
 
         {/* Collections */}
         <View style={styles.section}>
