@@ -965,12 +965,80 @@ function CollectionsNavigator() {
 
 function CollectionsScreen({ navigation }) {
   const [collections, setCollections] = useState([]);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedCollections, setSelectedCollections] = useState([]);
 
   useEffect(() => {
     loadCollections();
     const unsubscribe = navigation.addListener('focus', loadCollections);
     return unsubscribe;
   }, [navigation]);
+
+  const handleCollectionLongPress = (collection) => {
+  setSelectionMode(true);
+  setSelectedCollections([collection]);
+};
+
+const handleCollectionPress = (collection) => {
+  if (selectionMode) {
+    toggleCollectionSelection(collection);
+  } else {
+    navigation.navigate('CollectionDetail', { collection });
+  }
+};
+
+const toggleCollectionSelection = (collection) => {
+  if (selectedCollections.some(c => c.id === collection.id)) {
+    const newSelection = selectedCollections.filter(c => c.id !== collection.id);
+    setSelectedCollections(newSelection);
+    if (newSelection.length === 0) {
+      setSelectionMode(false);
+    }
+  } else {
+    setSelectedCollections([...selectedCollections, collection]);
+  }
+};
+
+const cancelSelection = () => {
+  setSelectionMode(false);
+  setSelectedCollections([]);
+};
+
+const deleteSelectedCollections = () => {
+  Alert.alert(
+    'Delete Collections',
+    `Are you sure you want to delete ${selectedCollections.length} collection${selectedCollections.length !== 1 ? 's' : ''}? This will not delete the photos, only the collections.`,
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const collectionsData = await AsyncStorage.getItem(STORAGE_KEYS.COLLECTIONS);
+            const collections = collectionsData ? JSON.parse(collectionsData) : [];
+            
+            const selectedIds = selectedCollections.map(c => c.id);
+            const updatedCollections = collections.filter(
+              collection => !selectedIds.includes(collection.id)
+            );
+
+            await AsyncStorage.setItem(STORAGE_KEYS.COLLECTIONS, JSON.stringify(updatedCollections));
+            
+            setSelectionMode(false);
+            setSelectedCollections([]);
+            loadCollections();
+            
+            Alert.alert('Success', `${selectedIds.length} collection${selectedIds.length !== 1 ? 's' : ''} deleted!`);
+          } catch (error) {
+            console.error('Error deleting collections:', error);
+            Alert.alert('Error', 'Failed to delete collections.');
+          }
+        }
+      }
+    ]
+  );
+};
 
   const loadCollections = async () => {
     try {
@@ -985,9 +1053,23 @@ function CollectionsScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <View style={styles.header}>
+      {selectionMode ? (
+        <>
+          <TouchableOpacity onPress={cancelSelection}>
+            <Text style={styles.cancelSelectionText}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={styles.selectionCountText}>
+            {selectedCollections.length} selected
+          </Text>
+          <TouchableOpacity onPress={deleteSelectedCollections}>
+            <Ionicons name="trash-outline" size={24} color="#DC2626" />
+          </TouchableOpacity>
+        </>
+      ) : (
         <Text style={styles.headerTitle}>Collections</Text>
-      </View>
+      )}
+    </View>
       
       {collections.length === 0 ? (
         <View style={styles.emptyState}>
@@ -1000,32 +1082,44 @@ function CollectionsScreen({ navigation }) {
           </Text>
         </View>
       ) : (
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.collectionsListContent}>
-          {collections.map((collection) => (
-            <TouchableOpacity 
-              key={collection.id} 
-              style={styles.collectionListCard}
-              onPress={() => navigation.navigate('CollectionDetail', { collection })}
-            >
-              <View style={styles.collectionListImageContainer}>
-                {collection.photos && collection.photos.length > 0 ? (
-                  <Image source={{ uri: collection.photos[0].uri }} style={styles.collectionListImage} />
-                ) : (
-                  <View style={styles.collectionListImageEmpty}>
-                    <Ionicons name="images-outline" size={32} color="#9CA3AF" />
-                  </View>
-                )}
+  <ScrollView style={styles.scrollView} contentContainerStyle={styles.collectionsListContent}>
+    {collections.map((collection) => {
+      const isSelected = selectedCollections.some(c => c.id === collection.id);
+      
+      return (
+        <TouchableOpacity 
+          key={collection.id} 
+          style={styles.collectionListCard}
+          onPress={() => handleCollectionPress(collection)}
+          onLongPress={() => handleCollectionLongPress(collection)}
+          delayLongPress={300}
+        >
+          <View style={styles.collectionListImageContainer}>
+            {collection.photos && collection.photos.length > 0 ? (
+              <Image source={{ uri: collection.photos[0].uri }} style={styles.collectionListImage} />
+            ) : (
+              <View style={styles.collectionListImageEmpty}>
+                <Ionicons name="images-outline" size={32} color="#9CA3AF" />
               </View>
-              <View style={styles.collectionListInfo}>
-                <Text style={styles.collectionListName}>{collection.name}</Text>
-                <Text style={styles.collectionListCount}>{collection.photos?.length || 0} photos</Text>
+            )}
+            {selectionMode && (
+              <View style={[styles.collectionSelectionCheckbox, isSelected && styles.collectionSelectionCheckboxSelected]}>
+                {isSelected && <Ionicons name="checkmark" size={18} color="white" />}
               </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
+            )}
+          </View>
+          <View style={styles.collectionListInfo}>
+            <Text style={styles.collectionListName}>{collection.name}</Text>
+            <Text style={styles.collectionListCount}>{collection.photos?.length || 0} photos</Text>
+          </View>
+        </TouchableOpacity>
+      );
+    })}
+  </ScrollView>
+)}
 
-      {/* Create Collection Button */}
+      {/* Create Collection Button or Delete Bar */}
+    {!selectionMode ? (
       <TouchableOpacity 
         style={styles.createCollectionButton}
         onPress={() => navigation.navigate('CreateCollection')}
@@ -1033,6 +1127,17 @@ function CollectionsScreen({ navigation }) {
         <Ionicons name="add-outline" size={20} color="white" />
         <Text style={styles.createCollectionButtonText}>Create Collection</Text>
       </TouchableOpacity>
+    ) : (
+      <View style={styles.deleteBar}>
+        <Text style={styles.deleteBarText}>
+          {selectedCollections.length} collection{selectedCollections.length !== 1 ? 's' : ''} selected
+        </Text>
+        <TouchableOpacity style={styles.deleteBarButton} onPress={deleteSelectedCollections}>
+          <Ionicons name="trash-outline" size={20} color="white" />
+          <Text style={styles.deleteBarButtonText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+    )}
     </SafeAreaView>
   );
 }
@@ -2333,6 +2438,24 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
     alignItems: 'center',
   },
+  collectionSelectionCheckbox: {
+  position: 'absolute',
+  top: 8,
+  right: 8,
+  width: 24,
+  height: 24,
+  borderRadius: 12,
+  borderWidth: 2,
+  borderColor: 'white',
+  backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
+collectionSelectionCheckboxSelected: {
+  backgroundColor: '#7D8F69',
+  borderColor: '#7D8F69',
+},
   // Add Photo Button & Modal
   addPhotoButton: {
     position: 'absolute',
