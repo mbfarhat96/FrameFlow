@@ -232,7 +232,6 @@ function GalleryScreen({ navigation }) {
   const [photosToTag, setPhotosToTag] = useState([]);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [tagTags, setTagTags] = useState([]);
-  const [customTagInput, setCustomTagInput] = useState('');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState([]);
 
@@ -303,7 +302,6 @@ function GalleryScreen({ navigation }) {
       setPhotosToTag(result.assets);
       setCurrentPhotoIndex(0);
       setTagTags([]);
-      setCustomTagInput('');
       setShowTagModal(true);
     }
   };
@@ -316,13 +314,6 @@ function GalleryScreen({ navigation }) {
     }
   };
 
-  const addCustomTag = () => {
-    const trimmedTag = customTagInput.trim();
-    if (trimmedTag && !tagTags.includes(trimmedTag)) {
-      setTagTags([...tagTags, trimmedTag]);
-      setCustomTagInput('');
-    }
-  };
 
   const saveCurrentPhoto = async () => {
     try {
@@ -345,7 +336,6 @@ function GalleryScreen({ navigation }) {
       if (currentPhotoIndex < photosToTag.length - 1) {
         setCurrentPhotoIndex(currentPhotoIndex + 1);
         setTagTags([]);
-        setCustomTagInput('');
       } else {
         // All photos tagged
         setShowTagModal(false);
@@ -364,7 +354,6 @@ function GalleryScreen({ navigation }) {
     if (currentPhotoIndex < photosToTag.length - 1) {
       setCurrentPhotoIndex(currentPhotoIndex + 1);
       setTagTags([]);
-      setCustomTagInput('');
     } else {
       setShowTagModal(false);
       setPhotosToTag([]);
@@ -613,106 +602,75 @@ const deleteSelectedPhotos = () => {
       )}
 
       {/* Tag Photo Modal */}
-      {showTagModal && photosToTag.length > 0 && (
-        <View style={styles.tagPhotoOverlay}>
-          <View style={styles.tagPhotoModal}>
-            {/* Header */}
-            <View style={styles.tagPhotoHeader}>
-              <Text style={styles.tagPhotoTitle}>Tag Photo</Text>
-              <Text style={styles.tagPhotoCounter}>
-                {currentPhotoIndex + 1} of {photosToTag.length}
-              </Text>
-            </View>
+{/* Tag Photo Modal */}
+{showTagModal && photosToTag.length > 0 && (
+  <View style={styles.tagPhotoOverlay}>
+    <View style={styles.tagPhotoModal}>
+      {/* Header */}
+      <View style={styles.tagPhotoHeader}>
+        <Text style={styles.tagPhotoTitle}>Tag Photo</Text>
+        <Text style={styles.tagPhotoCounter}>
+          {currentPhotoIndex + 1} of {photosToTag.length}
+        </Text>
+      </View>
 
-            {/* Photo Preview */}
-            <View style={styles.tagPhotoPreview}>
-              <Image 
-                source={{ uri: photosToTag[currentPhotoIndex].uri }} 
-                style={styles.tagPhotoImage}
-                resizeMode="cover"
-              />
-            </View>
+      {/* Photo Preview */}
+      <View style={styles.tagPhotoPreview}>
+        <Image 
+          source={{ uri: photosToTag[currentPhotoIndex].uri }} 
+          style={styles.tagPhotoImage}
+          resizeMode="cover"
+        />
+      </View>
 
-            {/* Tags Selection */}
-            <View style={styles.tagPhotoSection}>
-              <Text style={styles.tagPhotoLabel}>Add Tags</Text>
-              
-              {/* Custom Tag Input */}
-              <View style={styles.tagPhotoCustomInput}>
-                <TextInput
-                  style={styles.tagPhotoInput}
-                  placeholder="Type a custom tag..."
-                  placeholderTextColor="#9CA3AF"
-                  value={customTagInput}
-                  onChangeText={setCustomTagInput}
-                  onSubmitEditing={addCustomTag}
-                  returnKeyType="done"
-                />
-                {customTagInput.trim() && (
-                  <TouchableOpacity onPress={addCustomTag} style={styles.tagPhotoAddButton}>
-                    <Ionicons name="add" size={20} color="#7D8F69" />
-                  </TouchableOpacity>
-                )}
-              </View>
+      {/* Tags Selection - ScrollView only for this section */}
+      <ScrollView 
+        style={styles.tagPhotoScrollSection}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.tagPhotoSection}>
 
-              {/* Selected Tags */}
-              {tagTags.length > 0 && (
-                <View style={styles.tagPhotoSelectedTags}>
-                  {tagTags.map((tag) => (
-                    <View key={tag} style={styles.tagPhotoSelectedTag}>
-                      <Text style={styles.tagPhotoSelectedTagText}>{tag}</Text>
-                      <TouchableOpacity onPress={() => toggleTag(tag)}>
-                        <Ionicons name="close" size={16} color="white" />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* Preset Tags */}
-              <Text style={styles.tagPhotoQuickAddLabel}>Quick add:</Text>
-              <ScrollView 
-                style={styles.tagPhotoTagsScroll}
-                contentContainerStyle={styles.tagPhotoTagsGrid}
+          {/* Preset Tags */}
+          <Text style={styles.tagPhotoQuickAddLabel}>Select tags:</Text>
+          <View style={styles.tagPhotoTagsGrid}>
+            {PRESET_TAGS.map((tag) => (
+              <TouchableOpacity
+                key={tag}
+                style={[
+                  styles.tagPhotoTag,
+                  tagTags.includes(tag) && styles.tagPhotoTagSelected
+                ]}
+                onPress={() => toggleTag(tag)}
               >
-                {PRESET_TAGS.map((tag) => (
-                  <TouchableOpacity
-                    key={tag}
-                    style={[
-                      styles.tagPhotoTag,
-                      tagTags.includes(tag) && styles.tagPhotoTagDisabled
-                    ]}
-                    onPress={() => toggleTag(tag)}
-                    disabled={tagTags.includes(tag)}
-                  >
-                    <Text style={[
-                      styles.tagPhotoTagText,
-                      tagTags.includes(tag) && styles.tagPhotoTagTextDisabled
-                    ]}>
-                      {tag}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-
-            {/* Action Buttons */}
-            <View style={styles.tagPhotoActions}>
-              <TouchableOpacity style={styles.tagPhotoSkipButton} onPress={skipPhoto}>
-                <Text style={styles.tagPhotoSkipText}>Skip</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.tagPhotoSaveButton}
-                onPress={saveCurrentPhoto}
-              >
-                <Text style={styles.tagPhotoSaveText}>
-                  {currentPhotoIndex < photosToTag.length - 1 ? 'Next' : 'Save'}
+                <Text style={[
+                  styles.tagPhotoTagText,
+                  tagTags.includes(tag) && styles.tagPhotoTagTextSelected
+                ]}>
+                  {tag}
                 </Text>
               </TouchableOpacity>
-            </View>
+            ))}
           </View>
         </View>
-      )}
+      </ScrollView>
+
+      {/* Action Buttons */}
+      <View style={styles.tagPhotoActions}>
+        <TouchableOpacity style={styles.tagPhotoSkipButton} onPress={skipPhoto}>
+          <Text style={styles.tagPhotoSkipText}>Skip</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.tagPhotoSaveButton}
+          onPress={saveCurrentPhoto}
+        >
+          <Text style={styles.tagPhotoSaveText}>
+            {currentPhotoIndex < photosToTag.length - 1 ? 'Next' : 'Save'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+)}
     </SafeAreaView>
   );
 }
@@ -2659,7 +2617,7 @@ collectionSelectionCheckboxSelected: {
     backgroundColor: '#F5EFE7',
     borderRadius: 24,
     width: '100%',
-    maxHeight: '85%',
+    maxHeight: '100%',
   },
   tagPhotoHeader: {
     flexDirection: 'row',
@@ -2689,32 +2647,11 @@ collectionSelectionCheckboxSelected: {
     height: '100%',
   },
   tagPhotoSection: {
-    padding: 20,
-  },
-  tagPhotoLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#3C3C3C',
-    marginBottom: 12,
-  },
-  tagPhotoCustomInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F9F5F0',
-    borderWidth: 1,
-    borderColor: '#E8DFD3',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  tagPhotoInput: {
-    flex: 1,
-    paddingVertical: 14,
-    fontSize: 14,
-    color: '#3C3C3C',
-  },
-  tagPhotoAddButton: {
-    padding: 4,
+  padding: 20,
+  paddingTop: 16, // Reduced padding
+},
+  tagPhotoScrollSection: {
+    maxHeight: 300, // NEW - limits scrollable area
   },
   tagPhotoSelectedTags: {
     flexDirection: 'row',
@@ -2738,9 +2675,10 @@ collectionSelectionCheckboxSelected: {
     fontWeight: '500',
   },
   tagPhotoQuickAddLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 8,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#3C3C3C',
+    marginBottom: 12,
   },
   tagPhotoTagsScroll: {
     maxHeight: 150,
@@ -2800,6 +2738,14 @@ collectionSelectionCheckboxSelected: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  tagPhotoTagSelected: {
+    backgroundColor: '#7D8F69',
+    borderColor: '#7D8F69',
+  },
+
+  tagPhotoTagTextSelected: {
+    color: 'white',
   },
   // Media Detail Screen
   mediaDetailContainer: {
