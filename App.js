@@ -1836,7 +1836,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 20,
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 7, // Reduced from 16 to 12
   },
   searchBar: {
     flex: 1,
@@ -1863,8 +1863,9 @@ const styles = StyleSheet.create({
   },
   // Categories
   categoriesScroll: {
-    marginBottom: 16,
+    marginBottom: 12, // Changed from 16 to 12
     flexGrow: 0,
+    flexShrink: 0, // Keep this!
   },
   categoriesContent: {
     paddingHorizontal: 20,
@@ -1873,11 +1874,15 @@ const styles = StyleSheet.create({
   },
   categoryPill: {
     paddingHorizontal: 20,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 20,
     backgroundColor: '#F9F5F0',
     marginRight: 8,
     alignSelf: 'flex-start',
+    height: 35, // Explicit height
+    flexShrink: 0, // NEW: Prevents pill from being compressed
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   categoryPillActive: {
     backgroundColor: '#7D8F69',
@@ -1897,6 +1902,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     marginBottom: 16,
+    marginTop: 4, // NEW: Add a small top margin
   },
   photosTitle: {
     fontSize: 18,
