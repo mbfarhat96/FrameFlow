@@ -201,6 +201,8 @@ function GalleryScreen({ navigation }) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [tagTags, setTagTags] = useState([]);
   const [customTagInput, setCustomTagInput] = useState('');
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedPhotos, setSelectedPhotos] = useState([]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -339,10 +341,81 @@ function GalleryScreen({ navigation }) {
     }
   };
 
-  const renderMediaItem = ({ item }) => (
+  const handlePhotoLongPress = (photo) => {
+    setSelectionMode(true);
+    setSelectedPhotos([photo]);
+};
+
+const handlePhotoPress = (photo) => {
+    if (selectionMode) {
+      togglePhotoSelection(photo);
+    } else {
+      navigation.navigate('MediaDetail', { media: photo, showAddButton: false });
+    }
+};
+
+const togglePhotoSelection = (photo) => {
+    if (selectedPhotos.some(p => p.id === photo.id)) {
+      const newSelection = selectedPhotos.filter(p => p.id !== photo.id);
+      setSelectedPhotos(newSelection);
+      if (newSelection.length === 0) {
+        setSelectionMode(false);
+      }
+    } else {
+      setSelectedPhotos([...selectedPhotos, photo]);
+    }
+};
+
+const cancelSelection = () => {
+  setSelectionMode(false);
+  setSelectedPhotos([]);
+};
+
+const deleteSelectedPhotos = () => {
+  Alert.alert(
+    'Delete Photos',
+    `Are you sure you want to delete ${selectedPhotos.length} photo${selectedPhotos.length !== 1 ? 's' : ''} permanently?`,
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const existingData = await AsyncStorage.getItem(STORAGE_KEYS.MEDIA);
+            const existingMedia = existingData ? JSON.parse(existingData) : [];
+            
+            const selectedIds = selectedPhotos.map(p => p.id);
+            const updatedMedia = existingMedia.filter(
+              photo => !selectedIds.includes(photo.id)
+            );
+
+            await AsyncStorage.setItem(STORAGE_KEYS.MEDIA, JSON.stringify(updatedMedia));
+            
+            setSelectionMode(false);
+            setSelectedPhotos([]);
+            loadMedia();
+            
+            Alert.alert('Success', `${selectedIds.length} photo${selectedIds.length !== 1 ? 's' : ''} deleted!`);
+          } catch (error) {
+            console.error('Error deleting photos:', error);
+            Alert.alert('Error', 'Failed to delete photos.');
+          }
+        }
+      }
+    ]
+  );
+};
+
+  const renderMediaItem = ({ item }) => {
+  const isSelected = selectedPhotos.some(p => p.id === item.id);
+  
+  return (
     <TouchableOpacity 
       style={styles.galleryItem}
-      onPress={() => navigation.navigate('MediaDetail', { media: item, showAddButton: false })}
+      onPress={() => handlePhotoPress(item)}
+      onLongPress={() => handlePhotoLongPress(item)}
+      delayLongPress={300}
     >
       <Image source={{ uri: item.uri }} style={styles.galleryImage} />
       {item.type === 'video' && (
@@ -350,23 +423,45 @@ function GalleryScreen({ navigation }) {
           <Ionicons name="play" size={20} color="white" />
         </View>
       )}
+      {selectionMode && (
+        <View style={[styles.photoSelectionCheckbox, isSelected && styles.photoSelectionCheckboxSelected]}>
+          {isSelected && <Ionicons name="checkmark" size={18} color="white" />}
+        </View>
+      )}
     </TouchableOpacity>
   );
+};
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>FrameFlow</Text>
-        <TouchableOpacity>
-          <Ionicons name="notifications-outline" size={24} color="#3C3C3C" />
-        </TouchableOpacity>
-      </View>
+    <View style={styles.header}>
+      {selectionMode ? (
+        <>
+          <TouchableOpacity onPress={cancelSelection}>
+            <Text style={styles.cancelSelectionText}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={styles.selectionCountText}>
+            {selectedPhotos.length} selected
+          </Text>
+          <TouchableOpacity onPress={deleteSelectedPhotos}>
+            <Ionicons name="trash-outline" size={24} color="#DC2626" />
+          </TouchableOpacity>
+        </>
+      ) : (
+        <>
+          <Text style={styles.headerTitle}>FrameFlow</Text>
+          <TouchableOpacity>
+            <Ionicons name="notifications-outline" size={24} color="#3C3C3C" />
+          </TouchableOpacity>
+        </>
+      )}
+    </View>
 
       {/* Search Bar */}
-      <View style={styles.searchSection}>
+      {!selectionMode && (<View style={styles.searchSection}>
         <View style={styles.searchBar}>
           <Ionicons name="search-outline" size={20} color="#6B7280" />
           <TextInput
@@ -381,9 +476,10 @@ function GalleryScreen({ navigation }) {
           <Ionicons name="options-outline" size={20} color="#3C3C3C" />
         </TouchableOpacity>
       </View>
+      )}
 
       {/* Tag Filter Pills */}
-      <ScrollView 
+      {!selectionMode && ( <ScrollView 
         horizontal 
         showsHorizontalScrollIndicator={false}
         style={styles.categoriesScroll}
@@ -407,6 +503,7 @@ function GalleryScreen({ navigation }) {
           </TouchableOpacity>
         ))}
       </ScrollView>
+      )}
 
       {/* Photos Header */}
       <View style={styles.photosHeader}>
@@ -437,6 +534,7 @@ function GalleryScreen({ navigation }) {
       )}
 
       {/* Upload Button */}
+    {!selectionMode ? (
       <TouchableOpacity 
         style={styles.uploadButton}
         onPress={() => setShowUploadOptions(!showUploadOptions)}
@@ -444,6 +542,17 @@ function GalleryScreen({ navigation }) {
         <Ionicons name="cloud-upload-outline" size={20} color="white" />
         <Text style={styles.uploadButtonText}>Upload Photo</Text>
       </TouchableOpacity>
+    ) : (
+      <View style={styles.deleteBar}>
+        <Text style={styles.deleteBarText}>
+          {selectedPhotos.length} photo{selectedPhotos.length !== 1 ? 's' : ''} selected
+        </Text>
+        <TouchableOpacity style={styles.deleteBarButton} onPress={deleteSelectedPhotos}>
+          <Ionicons name="trash-outline" size={20} color="white" />
+          <Text style={styles.deleteBarButtonText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+    )}
 
       {/* Upload Options Modal */}
       {showUploadOptions && (
