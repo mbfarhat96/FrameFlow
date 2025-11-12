@@ -6,6 +6,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
+import { supabase } from './lib/supabase';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import AuthNavigator from './navigation/AuthNavigator';
+import { ActivityIndicator} from 'react-native';
 import { 
   View, 
   Text, 
@@ -1764,19 +1768,39 @@ function AddFromGalleryScreen({ navigation, route }) {
 // ============================================
 
 function ProfileScreen() {
+  const { signOut, user } = useAuth();
+
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            await signOut();
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profile</Text>
       </View>
-      <View style={styles.emptyState}>
+      <View style={styles.profileContent}>
         <View style={styles.emptyIconContainer}>
-          <Ionicons name="person-outline" size={48} color="#9CA3AF" />
+          <Ionicons name="person-outline" size={48} color="#7D8F69" />
         </View>
-        <Text style={styles.emptyStateTitle}>Profile</Text>
-        <Text style={styles.emptyStateText}>
-          Coming soon
-        </Text>
+        <Text style={styles.profileEmail}>{user?.email}</Text>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={20} color="white" />
+          <Text style={styles.logoutButtonText}>Logout</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -1886,22 +1910,48 @@ function MainTabs() {
   );
 }
 
+  function AppContent() {
+    const { user, loading } = useAuth();
+
+    if (loading) {
+      // Show loading screen while checking auth state
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5EFE7' }}>
+          <ActivityIndicator size="large" color="#7D8F69" />
+          <Text style={{ marginTop: 16, color: '#6B7280', fontSize: 16 }}>Loading...</Text>
+        </View>
+      );
+    }
+
+    // If no user, show auth screens
+    if (!user) {
+      return <AuthNavigator />;
+    }
+
+    // If user is logged in, show main app
+    return (
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Main" component={MainTabs} />
+        <Stack.Screen 
+          name="MediaDetailModal" 
+          component={MediaDetailScreen}
+          options={{
+            presentation: 'fullScreenModal',
+            animation: 'fade',
+          }}
+        />
+      </Stack.Navigator>
+    );
+  }
+
 export default function App() {
   return (
     <ErrorBoundary>
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="Main" component={MainTabs} />
-          <Stack.Screen 
-            name="MediaDetailModal" 
-            component={MediaDetailScreen}
-            options={{
-              presentation: 'fullScreenModal',
-              animation: 'fade',
-            }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
+      <AuthProvider>
+        <NavigationContainer>
+          <AppContent />
+        </NavigationContainer>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }
@@ -3041,4 +3091,34 @@ collectionSelectionCheckboxSelected: {
     fontWeight: '500',
     marginTop: 4,
   },
+  // Profile Screen
+  profileContent: {
+  flex: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+  paddingHorizontal: 20,
+},
+
+profileEmail: {
+  fontSize: 16,
+  color: '#3C3C3C',
+  marginTop: 16,
+  marginBottom: 32,
+},
+
+logoutButton: {
+  flexDirection: 'row',
+  backgroundColor: '#DC2626',
+  paddingHorizontal: 24,
+  paddingVertical: 12,
+  borderRadius: 12,
+  alignItems: 'center',
+  gap: 8,
+},
+
+logoutButtonText: {
+  color: 'white',
+  fontSize: 16,
+  fontWeight: '600',
+},
 });
