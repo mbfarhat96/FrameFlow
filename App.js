@@ -39,6 +39,7 @@ const STORAGE_KEYS = {
   COLLECTIONS: '@frameflow_collections',
 };
 
+
 const PRESET_TAGS = [
   'Bride', 'Groom', 'Couple', 'Family', 'Kids', 'Wedding', 'Portrait', 'Male', 'Female'
 ];
