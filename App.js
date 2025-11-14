@@ -28,6 +28,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { ErrorBoundary } from './components/error-boundary';
 import ProfileScreen from './screens/ProfileScreen';
 import SelectMediaScreen from './screens/SelectMediaScreen';
+import TagMediaScreen from './screens/TagMediaScreen';
+import HomeScreen from './screens/HomeScreen';
+import { STORAGE_KEYS } from './constants/storageKeys';
+
 
 
 const Tab = createBottomTabNavigator();
@@ -36,11 +40,6 @@ const Stack = createNativeStackNavigator();
 // ============================================
 // DATA MANAGEMENT
 // ============================================
-
-const STORAGE_KEYS = {
-  MEDIA: '@frameflow_media',
-  COLLECTIONS: '@frameflow_collections',
-};
 
 
 const PRESET_TAGS = [
@@ -55,175 +54,7 @@ const GALLERY_FILTER_TAGS = [
 // HOME SCREEN
 // ============================================
 
-function HomeScreen({ navigation }) {
-  const [stats, setStats] = useState({ photos: 0, tags: 0, collections: 0 });
-  const [collections, setCollections] = useState([]);
-  const [allMedia, setAllMedia] = useState([]);
 
-  useEffect(() => {
-    loadStats();
-    
-    // Add listener to reload stats when screen comes into focus
-    const unsubscribe = navigation.addListener('focus', () => {
-      loadStats();
-    });
-    
-    return unsubscribe;
-  }, [navigation]);
-
- const loadStats = async () => {
-  try {
-    // Load media data
-    const mediaData = await AsyncStorage.getItem(STORAGE_KEYS.MEDIA);
-    const collectionsData = await AsyncStorage.getItem(STORAGE_KEYS.COLLECTIONS);
-    
-    let photosCount = 0;
-    let tagsCount = 0;
-    let collectionsCount = 0;
-    
-    // Count photos and tags
-    if (mediaData) {
-      const media = JSON.parse(mediaData);
-      setAllMedia(media);
-      photosCount = media.length;
-      
-      // Count unique tags
-      const uniqueTags = new Set();
-      media.forEach(item => {
-        item.tags?.forEach(tag => uniqueTags.add(tag));
-      });
-      tagsCount = uniqueTags.size;
-      
-      // Group by first tag for collections preview
-      const grouped = media.reduce((acc, item) => {
-        const tag = item.tags?.[0] || 'Other';
-        if (!acc[tag]) acc[tag] = [];
-        acc[tag].push(item);
-        return acc;
-      }, {});
-
-      const cols = Object.entries(grouped).map(([name, items]) => ({
-        name,
-        count: items.length,
-        coverImage: items[0]?.uri,
-        mediaItem: items[0]
-      }));
-      setCollections(cols);
-    }
-    
-    // Count collections
-    if (collectionsData) {
-      const collections = JSON.parse(collectionsData);
-      collectionsCount = collections.length;
-    }
-    
-    // Update stats
-    setStats({
-      photos: photosCount,
-      tags: tagsCount,
-      collections: collectionsCount
-    });
-    
-  } catch (error) {
-    console.error('Error loading stats:', error);
-  }
-};
-
-  const loadMediaForDetail = (uri) => {
-    const mediaItem = allMedia.find(m => m.uri === uri);
-    if (mediaItem) {
-      navigation.navigate('MediaDetailModal', { media: mediaItem });
-    }
-  };
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>FrameFlow</Text>
-        <TouchableOpacity>
-          <Ionicons name="notifications-outline" size={24} color="#3C3C3C" />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Stats Cards */}
-        <View style={styles.statsContainer}>
-      <View style={styles.statCard}>
-        <Ionicons name="image-outline" size={24} color="#6B7280" />
-        <Text style={styles.statNumber}>{stats.photos.toLocaleString()}</Text>
-        <Text style={styles.statLabel}>Photos</Text>
-      </View>
-      <View style={styles.statCard}>
-        <Ionicons name="pricetag-outline" size={24} color="#6B7280" />
-        <Text style={styles.statNumber}>{stats.tags.toLocaleString()}</Text>
-        <Text style={styles.statLabel}>Tags</Text>
-      </View>
-      <View style={styles.statCard}>
-        <Ionicons name="folder-outline" size={24} color="#6B7280" />
-        <Text style={styles.statNumber}>{stats.collections}</Text>
-        <Text style={styles.statLabel}>Collections</Text>
-      </View>
-</View>
-
-        {/* Collections */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Collections</Text>
-            <TouchableOpacity>
-              <Text style={styles.viewAllText}>View all</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.collectionsScroll}>
-            {collections.map((col, index) => (
-              <TouchableOpacity 
-                key={index} 
-                style={styles.collectionCard}
-                onPress={() => {
-                  if (col.coverImage) {
-                    // Find the full media item to pass to detail screen
-                    loadMediaForDetail(col.coverImage);
-                  }
-                }}
-              >
-                {col.coverImage ? (
-                  <Image source={{ uri: col.coverImage }} style={styles.collectionImage} />
-                ) : (
-                  <View style={[styles.collectionImage, styles.collectionImageEmpty]}>
-                    <Ionicons name="images-outline" size={32} color="#9CA3AF" />
-                  </View>
-                )}
-                <View style={styles.collectionOverlay}>
-                  <Text style={styles.collectionName}>{col.name}</Text>
-                  <Text style={styles.collectionCount}>{col.count} photos</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-            {collections.length === 0 && (
-              <View style={styles.emptyCollections}>
-                <Text style={styles.emptyText}>No collections yet</Text>
-              </View>
-            )}
-          </ScrollView>
-        </View>
-
-        {/* Explore */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Explore</Text>
-          </View>
-          <View style={styles.emptyExplore}>
-            <Ionicons name="compass-outline" size={48} color="#9CA3AF" />
-            <Text style={styles.emptyExploreText}>Coming soon</Text>
-          </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
 
 // ============================================
 // LIBRARY/GALLERY SCREEN
@@ -805,95 +636,7 @@ function AddMediaNavigator() {
   );
 }
 
-function TagMediaScreen({ navigation, route }) {
-  const { media, mediaType } = route.params;
-  const [selectedTags, setSelectedTags] = useState([]);
 
-  const toggleTag = (tag) => {
-    if (selectedTags.includes(tag)) {
-      setSelectedTags(selectedTags.filter(t => t !== tag));
-    } else {
-      setSelectedTags([...selectedTags, tag]);
-    }
-  };
-
-  const importMedia = async () => {
-    if (selectedTags.length === 0) {
-      Alert.alert('Tags Required', 'Please select at least one tag.');
-      return;
-    }
-
-    try {
-      const existingData = await AsyncStorage.getItem(STORAGE_KEYS.MEDIA);
-      const existingMedia = existingData ? JSON.parse(existingData) : [];
-
-      const newMedia = media.map((item) => ({
-        id: Date.now().toString() + Math.random().toString(),
-        uri: item.uri,
-        type: mediaType,
-        tags: selectedTags,
-        createdAt: new Date().toISOString(),
-      }));
-
-      await AsyncStorage.setItem(
-        STORAGE_KEYS.MEDIA,
-        JSON.stringify([...existingMedia, ...newMedia])
-      );
-
-      navigation.navigate('GalleryTab');
-    } catch (error) {
-      console.error('Error saving media:', error);
-      Alert.alert('Error', 'Failed to save media.');
-    }
-  };
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={24} color="#3C3C3C" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Tag Photos</Text>
-        <View style={{ width: 24 }} />
-      </View>
-
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.tagSection}>
-          <Text style={styles.tagSectionLabel}>Tags</Text>
-          <View style={styles.tagsGrid}>
-            {PRESET_TAGS.map((tag) => (
-              <TouchableOpacity
-                key={tag}
-                style={[
-                  styles.tagOption,
-                  selectedTags.includes(tag) && styles.tagOptionSelected
-                ]}
-                onPress={() => toggleTag(tag)}
-              >
-                <Text style={[
-                  styles.tagOptionText,
-                  selectedTags.includes(tag) && styles.tagOptionTextSelected
-                ]}>
-                  {tag}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </ScrollView>
-
-      <View style={styles.importActions}>
-        <TouchableOpacity
-          style={[styles.importButton, selectedTags.length === 0 && styles.importButtonDisabled]}
-          onPress={importMedia}
-          disabled={selectedTags.length === 0}
-        >
-          <Text style={styles.importButtonText}>Import {media.length} Photos</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
-  );
-}
 
 // ============================================
 // COLLECTIONS SCREEN & CREATION FLOW
