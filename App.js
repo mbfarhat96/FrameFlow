@@ -26,6 +26,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ErrorBoundary } from './components/error-boundary';
+import ProfileScreen from './screens/ProfileScreen';
+import SelectMediaScreen from './screens/SelectMediaScreen';
+
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -370,17 +373,17 @@ function GalleryScreen({ navigation }) {
   const handlePhotoLongPress = (photo) => {
     setSelectionMode(true);
     setSelectedPhotos([photo]);
-};
+  };
 
-const handlePhotoPress = (photo) => {
+ const handlePhotoPress = (photo) => {
     if (selectionMode) {
       togglePhotoSelection(photo);
     } else {
       navigation.navigate('MediaDetail', { media: photo, showAddButton: false });
     }
-};
+  };
 
-const togglePhotoSelection = (photo) => {
+ const togglePhotoSelection = (photo) => {
     if (selectedPhotos.some(p => p.id === photo.id)) {
       const newSelection = selectedPhotos.filter(p => p.id !== photo.id);
       setSelectedPhotos(newSelection);
@@ -390,48 +393,48 @@ const togglePhotoSelection = (photo) => {
     } else {
       setSelectedPhotos([...selectedPhotos, photo]);
     }
-};
+  };  
 
-const cancelSelection = () => {
-  setSelectionMode(false);
-  setSelectedPhotos([]);
-};
+  const cancelSelection = () => {
+    setSelectionMode(false);
+    setSelectedPhotos([]);
+    };
 
-const deleteSelectedPhotos = () => {
-  Alert.alert(
-    'Delete Photos',
-    `Are you sure you want to delete ${selectedPhotos.length} photo${selectedPhotos.length !== 1 ? 's' : ''} permanently?`,
-    [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const existingData = await AsyncStorage.getItem(STORAGE_KEYS.MEDIA);
-            const existingMedia = existingData ? JSON.parse(existingData) : [];
-            
-            const selectedIds = selectedPhotos.map(p => p.id);
-            const updatedMedia = existingMedia.filter(
-              photo => !selectedIds.includes(photo.id)
-            );
+  const deleteSelectedPhotos = () => {
+    Alert.alert(
+      'Delete Photos',
+      `Are you sure you want to delete ${selectedPhotos.length} photo${selectedPhotos.length !== 1 ? 's' : ''} permanently?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const existingData = await AsyncStorage.getItem(STORAGE_KEYS.MEDIA);
+              const existingMedia = existingData ? JSON.parse(existingData) : [];
+              
+              const selectedIds = selectedPhotos.map(p => p.id);
+              const updatedMedia = existingMedia.filter(
+                photo => !selectedIds.includes(photo.id)
+              );
 
-            await AsyncStorage.setItem(STORAGE_KEYS.MEDIA, JSON.stringify(updatedMedia));
-            
-            setSelectionMode(false);
-            setSelectedPhotos([]);
-            loadMedia();
-            
-            Alert.alert('Success', `${selectedIds.length} photo${selectedIds.length !== 1 ? 's' : ''} deleted!`);
-          } catch (error) {
-            console.error('Error deleting photos:', error);
-            Alert.alert('Error', 'Failed to delete photos.');
+              await AsyncStorage.setItem(STORAGE_KEYS.MEDIA, JSON.stringify(updatedMedia));
+              
+              setSelectionMode(false);
+              setSelectedPhotos([]);
+              loadMedia();
+              
+              Alert.alert('Success', `${selectedIds.length} photo${selectedIds.length !== 1 ? 's' : ''} deleted!`);
+            } catch (error) {
+              console.error('Error deleting photos:', error);
+              Alert.alert('Error', 'Failed to delete photos.');
+            }
           }
         }
-      }
-    ]
-  );
-};
+      ]
+    );
+  };
 
   const renderMediaItem = ({ item }) => {
   const isSelected = selectedPhotos.some(p => p.id === item.id);
@@ -455,8 +458,7 @@ const deleteSelectedPhotos = () => {
         </View>
       )}
     </TouchableOpacity>
-  );
-};
+  );};
 
   return (
     <SafeAreaView style={styles.container}>
@@ -607,57 +609,56 @@ const deleteSelectedPhotos = () => {
       )}
 
       {/* Tag Photo Modal */}
-{/* Tag Photo Modal */}
-{showTagModal && photosToTag.length > 0 && (
-  <View style={styles.tagPhotoOverlay}>
-    <View style={styles.tagPhotoModal}>
-      {/* Header */}
-      <View style={styles.tagPhotoHeader}>
-        <Text style={styles.tagPhotoTitle}>Tag Photo</Text>
-        <Text style={styles.tagPhotoCounter}>
-          {currentPhotoIndex + 1} of {photosToTag.length}
-        </Text>
-      </View>
-
-      {/* Photo Preview */}
-      <View style={styles.tagPhotoPreview}>
-        <Image 
-          source={{ uri: photosToTag[currentPhotoIndex].uri }} 
-          style={styles.tagPhotoImage}
-          resizeMode="cover"
-        />
-      </View>
-
-      {/* Tags Selection - ScrollView only for this section */}
-      <ScrollView 
-        style={styles.tagPhotoScrollSection}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.tagPhotoSection}>
-
-          {/* Preset Tags */}
-          <Text style={styles.tagPhotoQuickAddLabel}>Select tags:</Text>
-          <View style={styles.tagPhotoTagsGrid}>
-            {PRESET_TAGS.map((tag) => (
-              <TouchableOpacity
-                key={tag}
-                style={[
-                  styles.tagPhotoTag,
-                  tagTags.includes(tag) && styles.tagPhotoTagSelected
-                ]}
-                onPress={() => toggleTag(tag)}
-              >
-                <Text style={[
-                  styles.tagPhotoTagText,
-                  tagTags.includes(tag) && styles.tagPhotoTagTextSelected
-                ]}>
-                  {tag}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+  {showTagModal && photosToTag.length > 0 && (
+    <View style={styles.tagPhotoOverlay}>
+      <View style={styles.tagPhotoModal}>
+        {/* Header */}
+        <View style={styles.tagPhotoHeader}>
+          <Text style={styles.tagPhotoTitle}>Tag Photo</Text>
+          <Text style={styles.tagPhotoCounter}>
+            {currentPhotoIndex + 1} of {photosToTag.length}
+          </Text>
         </View>
-      </ScrollView>
+
+        {/* Photo Preview */}
+        <View style={styles.tagPhotoPreview}>
+          <Image 
+            source={{ uri: photosToTag[currentPhotoIndex].uri }} 
+            style={styles.tagPhotoImage}
+            resizeMode="cover"
+          />
+        </View>
+
+        {/* Tags Selection - ScrollView only for this section */}
+        <ScrollView 
+          style={styles.tagPhotoScrollSection}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.tagPhotoSection}>
+
+            {/* Preset Tags */}
+            <Text style={styles.tagPhotoQuickAddLabel}>Select tags:</Text>
+            <View style={styles.tagPhotoTagsGrid}>
+              {PRESET_TAGS.map((tag) => (
+                <TouchableOpacity
+                  key={tag}
+                  style={[
+                    styles.tagPhotoTag,
+                    tagTags.includes(tag) && styles.tagPhotoTagSelected
+                  ]}
+                  onPress={() => toggleTag(tag)}
+                >
+                  <Text style={[
+                    styles.tagPhotoTagText,
+                    tagTags.includes(tag) && styles.tagPhotoTagTextSelected
+                  ]}>
+                    {tag}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
 
       {/* Action Buttons */}
       <View style={styles.tagPhotoActions}>
@@ -675,7 +676,7 @@ const deleteSelectedPhotos = () => {
       </View>
     </View>
   </View>
-)}
+  )}
     </SafeAreaView>
   );
 }
@@ -801,54 +802,6 @@ function AddMediaNavigator() {
       <Stack.Screen name="SelectMedia" component={SelectMediaScreen} />
       <Stack.Screen name="TagMedia" component={TagMediaScreen} />
     </Stack.Navigator>
-  );
-}
-
-function SelectMediaScreen({ navigation }) {
-  const requestPermission = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Please grant camera roll access to import media.');
-      return false;
-    }
-    return true;
-  };
-
-  const pickMedia = async () => {
-    const hasPermission = await requestPermission();
-    if (!hasPermission) return;
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      allowsMultipleSelection: true,
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      const mediaType = result.assets[0].type || 'image';
-      navigation.navigate('TagMedia', { 
-        media: result.assets, 
-        mediaType 
-      });
-    }
-  };
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Add Media</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="close" size={24} color="#3C3C3C" />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.addMediaContent}>
-        <TouchableOpacity style={styles.addMediaButton} onPress={pickMedia}>
-          <Ionicons name="cloud-upload-outline" size={32} color="white" />
-          <Text style={styles.addMediaButtonText}>Choose from Gallery</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
   );
 }
 
@@ -1760,49 +1713,6 @@ function AddFromGalleryScreen({ navigation, route }) {
           columnWrapperStyle={styles.selectablePhotosRow}
         />
       )}
-    </SafeAreaView>
-  );
-}
-
-// ============================================
-// PROFILE SCREEN
-// ============================================
-
-function ProfileScreen() {
-  const { signOut, user } = useAuth();
-
-  const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await signOut();
-          }
-        }
-      ]
-    );
-  };
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
-      </View>
-      <View style={styles.profileContent}>
-        <View style={styles.emptyIconContainer}>
-          <Ionicons name="person-outline" size={48} color="#7D8F69" />
-        </View>
-        <Text style={styles.profileEmail}>{user?.email}</Text>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color="white" />
-          <Text style={styles.logoutButtonText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }
