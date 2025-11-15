@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import Header from '../components/Header';
 import styles from '../styles/globalStyles';
 
 
@@ -28,9 +29,11 @@ function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
-      </View>
+      <Header
+        center={
+          <Text style={styles.headerTitle}>Profile</Text>
+        }
+      />
       <View style={styles.profileContent}>
         <View style={styles.emptyIconContainer}>
           <Ionicons name="person-outline" size={48} color="#7D8F69" />

@@ -11,6 +11,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import styles from '../styles/globalStyles';
+import Header from '../components/Header';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 
 function CollectionsScreen({ navigation }) {
@@ -103,23 +104,31 @@ const deleteSelectedCollections = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-    <View style={styles.header}>
-      {selectionMode ? (
-        <>
+    <Header
+      left={
+        selectionMode ? (
           <TouchableOpacity onPress={cancelSelection}>
             <Text style={styles.cancelSelectionText}>Cancel</Text>
           </TouchableOpacity>
+        ) : null
+      }
+      center={
+        selectionMode ? (
           <Text style={styles.selectionCountText}>
             {selectedCollections.length} selected
           </Text>
+        ) : (
+          <Text style={styles.headerTitle}>Collections</Text>
+        )
+      }
+      right={
+        selectionMode ? (
           <TouchableOpacity onPress={deleteSelectedCollections}>
             <Ionicons name="trash-outline" size={24} color="#DC2626" />
           </TouchableOpacity>
-        </>
-      ) : (
-        <Text style={styles.headerTitle}>Collections</Text>
-      )}
-    </View>
+        ) : null
+      }
+    />
       
       {collections.length === 0 ? (
         <View style={styles.emptyState}>

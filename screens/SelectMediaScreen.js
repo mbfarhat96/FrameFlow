@@ -2,6 +2,7 @@ import React from 'react';
 import { SafeAreaView, View, Text, TouchableOpacity, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import Header from '../components/Header';
 import styles from '../styles/globalStyles';
 
 function SelectMediaScreen({ navigation }) {
@@ -35,13 +36,16 @@ function SelectMediaScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Add Media</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="close" size={24} color="#3C3C3C" />
-        </TouchableOpacity>
-      </View>
-
+      <Header
+        center={
+          <Text style={styles.headerTitle}>Add Media</Text>
+        }
+        right={
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="close" size={24} color="#3C3C3C" />
+          </TouchableOpacity>
+        }
+      />
       <View style={styles.addMediaContent}>
         <TouchableOpacity style={styles.addMediaButton} onPress={pickMedia}>
           <Ionicons name="cloud-upload-outline" size={32} color="white" />

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SafeAreaView, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Header from '../components/Header';  
 import styles from '../styles/globalStyles';
 
 function TagMediaScreen({ navigation, route }) {
@@ -47,13 +48,19 @@ function TagMediaScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={24} color="#3C3C3C" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Tag Photos</Text>
-        <View style={{ width: 24 }} />
-      </View>
+      <Header
+        left={
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={24} color="#3C3C3C" />
+          </TouchableOpacity>
+        }
+        center={
+          <Text style={styles.headerTitle}>Tag Photos</Text>
+        }
+        right={
+          <View style={{ width: 24 }} />
+        }
+      />
 
       <ScrollView style={styles.scrollView}>
         <View style={styles.tagSection}>

@@ -1,11 +1,7 @@
-// App.js - FrameFlow with LensFlow Design
 import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as ImagePicker from 'expo-image-picker';
 import { supabase } from './lib/supabase';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthNavigator from './navigation/AuthNavigator';
@@ -37,32 +33,12 @@ import SelectPhotosForCollectionScreen from './screens/SelectPhotosForCollection
 import CollectionDetailScreen from './screens/CollectionDetailScreen';
 import AddFromGalleryScreen from './screens/AddFromGalleryScreen';
 import MediaDetailScreen from './screens/MediaDetailScreen';
-import { STORAGE_KEYS } from './constants/storageKeys';
+
 
 
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
-
-// ============================================
-// DATA MANAGEMENT
-// ============================================
-
-// ============================================
-// HOME SCREEN
-// ============================================
-
-
-
-// ============================================
-// LIBRARY/GALLERY SCREEN
-// ============================================
-
-// ============================================
-// MEDIA DETAIL SCREEN
-// ============================================
-
-
 
 // ============================================
 // ADD MEDIA FLOW
@@ -76,8 +52,6 @@ function AddMediaNavigator() {
     </Stack.Navigator>
   );
 }
-
-
 
 // ============================================
 // COLLECTIONS SCREEN & CREATION FLOW
@@ -94,8 +68,6 @@ function CollectionsNavigator() {
     </Stack.Navigator>
   );
 }
-
-
 
 // ============================================
 // NAVIGATION

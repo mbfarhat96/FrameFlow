@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import styles from '../styles/globalStyles';
+import Header from '../components/Header';
 
 function CreateCollectionScreen({ navigation }) {
   const [collectionName, setCollectionName] = useState('');
@@ -23,13 +24,17 @@ function CreateCollectionScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={24} color="#3C3C3C" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>New Collection</Text>
-        <View style={{ width: 24 }} />
-      </View>
+      <Header
+        left={
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={24} color="#3C3C3C" />
+          </TouchableOpacity>
+        }
+        center={
+          <Text style={styles.headerTitle}>New Collection</Text>
+        }
+        right={<View style={{ width: 24 }} />}
+      />
 
       <View style={styles.createCollectionContent}>
         <View style={styles.createCollectionIconContainer}>

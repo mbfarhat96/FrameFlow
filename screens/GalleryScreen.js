@@ -17,6 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import styles from '../styles/globalStyles';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 import { PRESET_TAGS, GALLERY_FILTER_TAGS } from '../constants/galleryTags';
+import Header from '../components/Header';
+
 
 function GalleryScreen({ navigation }) {
   const [media, setMedia] = useState([]);
@@ -254,28 +256,35 @@ function GalleryScreen({ navigation }) {
       <StatusBar barStyle="dark-content" />
       
       {/* Header */}
-    <View style={styles.header}>
-      {selectionMode ? (
-        <>
-          <TouchableOpacity onPress={cancelSelection}>
-            <Text style={styles.cancelSelectionText}>Cancel</Text>
-          </TouchableOpacity>
-          <Text style={styles.selectionCountText}>
-            {selectedPhotos.length} selected
-          </Text>
-          <TouchableOpacity onPress={deleteSelectedPhotos}>
-            <Ionicons name="trash-outline" size={24} color="#DC2626" />
-          </TouchableOpacity>
-        </>
-      ) : (
-        <>
-          <Text style={styles.headerTitle}>FrameFlow</Text>
-          <TouchableOpacity>
-            <Ionicons name="notifications-outline" size={24} color="#3C3C3C" />
-          </TouchableOpacity>
-        </>
-      )}
-    </View>
+       <Header
+  left={
+    selectionMode ? (
+      <TouchableOpacity onPress={cancelSelection}>
+        <Text style={styles.cancelSelectionText}>Cancel</Text>
+      </TouchableOpacity>
+    ) : null
+  }
+  center={
+    selectionMode ? (
+      <Text style={styles.selectionCountText}>
+        {selectedPhotos.length} selected
+      </Text>
+    ) : (
+      <Text style={styles.headerTitle}>FrameFlow</Text>
+    )
+  }
+  right={
+    selectionMode ? (
+      <TouchableOpacity onPress={deleteSelectedPhotos}>
+        <Ionicons name="trash-outline" size={24} color="#DC2626" />
+      </TouchableOpacity>
+    ) : (
+      <TouchableOpacity>
+        <Ionicons name="notifications-outline" size={24} color="#3C3C3C" />
+      </TouchableOpacity>
+    )
+  }
+/>
 
       {/* Search Bar */}
       {!selectionMode && (<View style={styles.searchSection}>

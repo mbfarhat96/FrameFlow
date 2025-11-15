@@ -11,6 +11,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import styles from '../styles/globalStyles';
+import Header from '../components/Header';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 
 
@@ -100,12 +101,14 @@ function HomeScreen({ navigation }) {
       <StatusBar barStyle="dark-content" />
       
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>FrameFlow</Text>
-        <TouchableOpacity>
-          <Ionicons name="notifications-outline" size={24} color="#3C3C3C" />
-        </TouchableOpacity>
-      </View>
+      <Header
+        center={<Text style={styles.headerTitle}>FrameFlow</Text>}
+        right={
+          <TouchableOpacity>
+            <Ionicons name="notifications-outline" size={24} color="#3C3C3C" />
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Stats Cards */}

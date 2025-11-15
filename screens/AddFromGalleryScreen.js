@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles from '../styles/globalStyles';
+import Header from '../components/Header';
 import { STORAGE_KEYS } from '../constants/storageKeys';
 
 function AddFromGalleryScreen({ navigation, route }) {
@@ -73,16 +74,21 @@ function AddFromGalleryScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={24} color="#3C3C3C" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Select Photos</Text>
-        <TouchableOpacity onPress={addPhotosToCollection}>
-          <Text style={styles.headerDoneText}>Add</Text>
-        </TouchableOpacity>
-      </View>
-
+      <Header
+        left={
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={24} color="#3C3C3C" />
+          </TouchableOpacity>
+        }
+        center={
+          <Text style={styles.headerTitle}>Select Photos</Text>
+        }
+        right={
+          <TouchableOpacity onPress={addPhotosToCollection}>
+            <Text style={styles.headerDoneText}>Add</Text>
+          </TouchableOpacity>
+        }
+      />
       <View style={styles.selectedCountContainer}>
         <Text style={styles.selectedCountText}>
           {selectedPhotos.length} photo{selectedPhotos.length !== 1 ? 's' : ''} selected

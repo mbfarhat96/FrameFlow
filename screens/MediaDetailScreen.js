@@ -3,6 +3,7 @@ import {
   SafeAreaView,
   View,
   Text,
+  StatusBar,
   ScrollView,
   Image,
   TouchableOpacity,
